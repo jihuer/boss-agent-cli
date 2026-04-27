@@ -24,12 +24,15 @@ class AuthManager:
 		self._token: dict[str, Any] | None = None
 		self._logger = logger or Logger()
 
+	def _login_action(self) -> str:
+		return "boss --platform zhilian login" if self._platform == "zhilian" else "boss login"
+
 	def get_token(self) -> dict[str, Any]:
 		if self._token is not None:
 			return self._token
 		self._token = self._store.load()
 		if self._token is None:
-			raise AuthRequired("未登录，请先执行 boss login")
+			raise AuthRequired(f"未登录，请先执行 {self._login_action()}")
 		return self._token
 
 	def login(

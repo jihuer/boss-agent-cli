@@ -34,6 +34,16 @@ def test_get_token_raises_auth_required_when_no_session(mock_store_cls, tmp_path
 
 
 @patch("boss_agent_cli.auth.manager.TokenStore")
+def test_get_token_raises_platform_specific_auth_required_for_zhilian(mock_store_cls, tmp_path):
+	store = _make_store(token=None)
+	mock_store_cls.return_value = store
+	manager = AuthManager(tmp_path, platform="zhilian")
+
+	with pytest.raises(AuthRequired, match="boss --platform zhilian login"):
+		manager.get_token()
+
+
+@patch("boss_agent_cli.auth.manager.TokenStore")
 def test_auth_manager_uses_default_zhipin_store_path(mock_store_cls, tmp_path):
 	AuthManager(tmp_path)
 	mock_store_cls.assert_called_once_with(tmp_path / "auth")

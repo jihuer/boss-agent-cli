@@ -267,6 +267,19 @@ def test_login_timeout_error_recovery_is_retry(mock_auth_cls):
 
 
 @patch("boss_agent_cli.commands.login.AuthManager")
+def test_zhilian_login_timeout_uses_platform_specific_recovery(mock_auth_cls):
+	mock_auth = MagicMock()
+	mock_auth.login.side_effect = TimeoutError("扫码超时")
+	mock_auth_cls.return_value = mock_auth
+
+	runner = CliRunner()
+	result = runner.invoke(cli, ["--platform", "zhilian", "login"])
+	assert result.exit_code == 1
+	parsed = json.loads(result.output)
+	assert parsed["error"]["recovery_action"] == "boss --platform zhilian login"
+
+
+@patch("boss_agent_cli.commands.login.AuthManager")
 def test_login_generic_exception_wrapped_as_network_error(mock_auth_cls):
 	"""泛型异常也应被 wrap 成 NETWORK_ERROR，不裸泄给用户。"""
 	mock_auth = MagicMock()
@@ -279,6 +292,19 @@ def test_login_generic_exception_wrapped_as_network_error(mock_auth_cls):
 	parsed = json.loads(result.output)
 	assert parsed["error"]["code"] == "NETWORK_ERROR"
 	assert "登录失败" in parsed["error"]["message"]
+
+
+@patch("boss_agent_cli.commands.login.AuthManager")
+def test_zhilian_login_generic_exception_uses_platform_specific_recovery(mock_auth_cls):
+	mock_auth = MagicMock()
+	mock_auth.login.side_effect = RuntimeError("some unexpected error")
+	mock_auth_cls.return_value = mock_auth
+
+	runner = CliRunner()
+	result = runner.invoke(cli, ["--platform", "zhilian", "login"])
+	assert result.exit_code == 1
+	parsed = json.loads(result.output)
+	assert parsed["error"]["recovery_action"] == "boss --platform zhilian login"
 
 
 @patch("boss_agent_cli.commands.login.AuthManager")

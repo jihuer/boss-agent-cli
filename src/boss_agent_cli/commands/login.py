@@ -1,6 +1,7 @@
 import click
 
 from boss_agent_cli.auth.manager import AuthManager
+from boss_agent_cli.display import login_action_for_ctx
 from boss_agent_cli.output import emit_error, emit_success
 
 
@@ -46,7 +47,7 @@ def login_cmd(ctx: click.Context, timeout: int, cookie_source: str | None, cdp: 
 			code="NETWORK_ERROR",
 			message=str(e),
 			recoverable=True,
-			recovery_action="boss login",
+			recovery_action=login_action_for_ctx(ctx),
 		)
 	except Exception as e:
 		emit_error(
@@ -54,5 +55,5 @@ def login_cmd(ctx: click.Context, timeout: int, cookie_source: str | None, cdp: 
 			code="NETWORK_ERROR",
 			message=f"登录失败: {e}",
 			recoverable=True,
-			recovery_action="boss login",
+			recovery_action=login_action_for_ctx(ctx),
 		)

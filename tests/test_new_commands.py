@@ -513,6 +513,16 @@ def test_logout_success(mock_auth_cls):
 	assert parsed["ok"] is True
 
 
+@patch("boss_agent_cli.commands.logout.AuthManager")
+def test_logout_success_for_zhilian_has_platform_specific_next_action(mock_auth_cls):
+	mock_auth_cls.return_value.logout.return_value = None
+	runner = CliRunner()
+	result = runner.invoke(cli, ["--platform", "zhilian", "logout"])
+	assert result.exit_code == 0
+	parsed = json.loads(result.output)
+	assert parsed["hints"]["next_actions"][0] == "boss --platform zhilian login — 重新登录"
+
+
 # ── schema 包含新命令 ────────────────────────────────────────────────
 
 
