@@ -220,14 +220,20 @@ def test_login_success(mock_auth_cls):
 	mock_auth.login.assert_called_once()
 
 
-def test_login_rejects_non_zhipin_platform():
+@patch("boss_agent_cli.commands.login.AuthManager")
+def test_login_supports_zhilian_platform(mock_auth_cls):
+	mock_auth = MagicMock()
+	mock_auth.login.return_value = {
+		"cookies": {"zp_token": "x"}, "user_agent": "ua", "_method": "Cookie 提取",
+	}
+	mock_auth_cls.return_value = mock_auth
+
 	runner = CliRunner()
 	result = runner.invoke(cli, ["--platform", "zhilian", "login"])
-	assert result.exit_code == 1
+	assert result.exit_code == 0
 	parsed = json.loads(result.output)
-	assert parsed["error"]["code"] == "INVALID_PARAM"
-	assert "仅支持 zhipin" in parsed["error"]["message"]
-	assert parsed["error"]["recovery_action"] == "boss --platform zhipin login"
+	assert parsed["ok"] is True
+	mock_auth.login.assert_called_once()
 
 
 @patch("boss_agent_cli.commands.login.AuthManager")

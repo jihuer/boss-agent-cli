@@ -120,7 +120,7 @@ def test_login_falls_back_to_patchright_when_qr_fails(
 	result = manager.login(timeout=20)
 
 	mock_qr_login.assert_called_once()
-	mock_login_via_browser.assert_called_once_with(timeout=20)
+	mock_login_via_browser.assert_called_once_with(timeout=20, platform="zhipin")
 	assert result["_method"] == "扫码登录"
 	assert manager._token["stoken"] == "bt"
 
@@ -211,6 +211,22 @@ def test_verify_cookie_returns_false_on_value_error(mock_get, mock_store_cls, tm
 
 	manager = AuthManager(tmp_path)
 	assert manager._verify_cookie({"cookies": {"wt2": "x"}}) is False
+
+
+@patch("boss_agent_cli.auth.manager.TokenStore")
+@patch("httpx.get")
+def test_verify_cookie_supports_zhilian_http_style_code(mock_get, mock_store_cls, tmp_path):
+	mock_store_cls.return_value = _make_store()
+	mock_resp = MagicMock()
+	mock_resp.json.return_value = {"code": 200, "data": {"name": "tester"}}
+	mock_get.return_value = mock_resp
+
+	manager = AuthManager(tmp_path, platform="zhilian")
+	result = manager._verify_cookie({"cookies": {"zp_token": "abc"}, "user_agent": "UA", "x_zp_client_id": "cid"})
+	assert result is True
+	call = mock_get.call_args
+	assert call.kwargs["cookies"] == {"zp_token": "abc"}
+	assert call.kwargs["headers"]["x-zp-client-id"] == "cid"
 
 
 # ── force_refresh 剩余分支 ────────────────────────────────
