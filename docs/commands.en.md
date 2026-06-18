@@ -31,7 +31,7 @@ subcommands under `hr`, grouped below by workflow stage.
 
 | Command | Description |
 |---------|-------------|
-| `boss search <query>` | Search jobs (`--url` web filters, comma multi-select, `--welfare` filtering, `--preset`) |
+| `boss search <query>` | Search jobs (`--url` web filters, comma multi-select, `--welfare` filtering, `--sort score` local sorting, `--preset`) |
 | `boss recommend` | Restricted: blocked by default in low-risk mode (avoids auto-reading recommendation streams) |
 | `boss detail <security_id>` | Job detail (`--job-id` uses the fast path) |
 | `boss show <#>` | Re-view a numbered result from the last search |
@@ -63,7 +63,7 @@ subcommands under `hr`, grouped below by workflow stage.
 |---------|-------------|
 | `boss pipeline` / `boss follow-up` / `boss digest` | Restricted: blocked by default (depend on session/interview data) |
 | `boss watch add/list/remove/run` | add/list/remove manage local presets; run is blocked by default (avoids automated incremental pulls) |
-| `boss shortlist add/list/remove` | Local shortlist |
+| `boss shortlist add/list/annotate/compare/remove` | Local shortlist with tags, notes, and offline compare |
 | `boss preset add/list/remove` | Search presets |
 
 ## Recruiter mode
@@ -104,7 +104,8 @@ boss search "golang" \
   --scale 100-499人 \
   --industry 互联网 \
   --stage 已上市 \
-  --welfare "双休,五险一金"
+  --welfare "双休,五险一金" \
+  --sort score
 ```
 
 Search and export can reuse filters selected manually on the BOSS web UI:
@@ -119,4 +120,4 @@ boss export --url 'https://www.zhipin.com/web/geek/jobs?query=Golang&city=101280
 1. Check job welfare tags (`welfareList`) first
 2. Fall back to full-text search of the job description when tags don't match
 3. Auto-paginate (up to 5 pages)
-4. Every result carries `welfare_match` explaining the match source
+4. Every result carries `welfare_match` explaining the match source and `match_score` for `--sort score` local sorting

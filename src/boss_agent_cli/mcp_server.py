@@ -19,18 +19,20 @@ from boss_agent_cli.compliance import (
 )
 from boss_agent_cli.platforms import list_platforms, list_recruiter_platforms
 
+SERVER_INSTRUCTIONS = (
+	"boss-agent-cli over MCP: a local-assist BOSS Zhipin job-search toolset, low-risk by default — "
+	"read-only first, user-triggered, no risk-control bypass, no bulk outreach, no platform-data scraping. "
+	"Sensitive actions (greet, batch-greet, apply, contact exchange, recruiter candidate data, replies) "
+	"are not exposed and return COMPLIANCE_BLOCKED at the CLI layer; for those the user acts manually on "
+	"the official BOSS Zhipin website. Every tool returns the same JSON envelope "
+	"{ok, data, pagination, error, hints}; when ok is false, read error.code and error.recovery_action and "
+	"act on it (for example AUTH_REQUIRED means the user runs boss login). boss schema is the capability "
+	"source of truth — do not hardcode command tables."
+)
+
 server = Server(
 	"boss-agent-cli",
-	instructions=(
-		"boss-agent-cli over MCP: a local-assist BOSS Zhipin job-search toolset, low-risk by default — "
-		"read-only first, user-triggered, no risk-control bypass, no bulk outreach, no platform-data scraping. "
-		"Sensitive actions (greet, batch-greet, apply, contact exchange, recruiter candidate data, replies) "
-		"are not exposed and return COMPLIANCE_BLOCKED at the CLI layer; for those the user acts manually on "
-		"the official BOSS Zhipin website. Every tool returns the same JSON envelope "
-		"{ok, data, pagination, error, hints}; when ok is false, read error.code and error.recovery_action and "
-		"act on it (for example AUTH_REQUIRED means the user runs boss login). boss schema is the capability "
-		"source of truth — do not hardcode command tables."
-	),
+	instructions=SERVER_INSTRUCTIONS,
 )
 DEFAULT_TRANSPORT = "stdio"
 DEFAULT_HOST = "127.0.0.1"
@@ -141,6 +143,7 @@ TOOLS = [
 				"education": {"type": "string", "description": "学历要求（如 本科）"},
 				"welfare": {"type": "string", "description": "福利筛选，逗号分隔 AND 逻辑（如 双休,五险一金）"},
 				"page": {"type": "integer", "description": "页码", "default": 1},
+				"sort": {"type": "string", "enum": ["relevance", "score"], "description": "排序方式", "default": "relevance"},
 			},
 			"required": ["query"],
 		},
@@ -500,6 +503,18 @@ TOOLS = [
 		},
 	),
 	Tool(
+		name="boss_ai_fit",
+		description="基于本地简历和候选池已缓存职位详情生成逐岗匹配度、能力缺口和关键词命中报告",
+		inputSchema={
+			"type": "object",
+			"properties": {
+				"resume": {"type": "string", "description": "简历名称"},
+				"limit": {"type": "integer", "description": "最多分析的候选池职位数", "default": 20},
+			},
+			"required": ["resume"],
+		},
+	),
+	Tool(
 		name="boss_watch_list",
 		description="列出所有已保存的监控条件",
 		inputSchema={"type": "object", "properties": {}, "required": []},
@@ -527,14 +542,42 @@ TOOLS = [
 	),
 	Tool(
 		name="boss_shortlist_add",
-		description="将职位加入候选池",
+		description="将职位加入本地候选池，可附加本地标签和备注",
 		inputSchema={
 			"type": "object",
 			"properties": {
 				"security_id": {"type": "string", "description": "职位安全 ID"},
 				"job_id": {"type": "string", "description": "加密职位 ID"},
+				"tags": {"type": "string", "description": "本地标签，逗号分隔"},
+				"note": {"type": "string", "description": "本地备注"},
 			},
 			"required": ["security_id", "job_id"],
+		},
+	),
+	Tool(
+		name="boss_shortlist_annotate",
+		description="更新本地候选池职位的标签和备注",
+		inputSchema={
+			"type": "object",
+			"properties": {
+				"security_id": {"type": "string", "description": "职位安全 ID"},
+				"job_id": {"type": "string", "description": "加密职位 ID"},
+				"add_tags": {"type": "array", "items": {"type": "string"}, "description": "要添加的本地标签"},
+				"remove_tags": {"type": "array", "items": {"type": "string"}, "description": "要移除的本地标签"},
+				"note": {"type": "string", "description": "替换本地备注"},
+			},
+			"required": ["security_id", "job_id"],
+		},
+	),
+	Tool(
+		name="boss_shortlist_compare",
+		description="本地对比候选池职位，可按标签过滤",
+		inputSchema={
+			"type": "object",
+			"properties": {
+				"tag": {"type": "string", "description": "只比较包含该标签的本地候选职位"},
+			},
+			"required": [],
 		},
 	),
 	Tool(
@@ -797,6 +840,8 @@ def _build_args(tool_name: str, arguments: dict) -> list[str]:
 				args.extend([f"--{opt}", str(arguments[opt])])
 		if "page" in arguments:
 			args.extend(["--page", str(arguments["page"])])
+		if arguments.get("sort"):
+			args.extend(["--sort", str(arguments["sort"])])
 		return args
 
 	if name == "recommend":
@@ -968,6 +1013,12 @@ def _build_args(tool_name: str, arguments: dict) -> list[str]:
 	if name == "ai_suggest":
 		return ["ai", "suggest", arguments["resume"], "--jd", arguments["jd_text"]]
 
+	if name == "ai_fit":
+		args = ["ai", "fit", "--resume", arguments["resume"]]
+		if "limit" in arguments:
+			args.extend(["--limit", str(arguments["limit"])])
+		return args
+
 	if name == "watch_list":
 		return ["watch", "list"]
 
@@ -981,7 +1032,28 @@ def _build_args(tool_name: str, arguments: dict) -> list[str]:
 		return ["shortlist", "list"]
 
 	if name == "shortlist_add":
-		return ["shortlist", "add", arguments["security_id"], arguments["job_id"]]
+		args = ["shortlist", "add", arguments["security_id"], arguments["job_id"]]
+		if arguments.get("tags"):
+			args.extend(["--tags", str(arguments["tags"])])
+		if arguments.get("note"):
+			args.extend(["--note", str(arguments["note"])])
+		return args
+
+	if name == "shortlist_annotate":
+		args = ["shortlist", "annotate", arguments["security_id"], arguments["job_id"]]
+		for tag in arguments.get("add_tags") or []:
+			args.extend(["--add-tag", str(tag)])
+		for tag in arguments.get("remove_tags") or []:
+			args.extend(["--remove-tag", str(tag)])
+		if arguments.get("note"):
+			args.extend(["--note", str(arguments["note"])])
+		return args
+
+	if name == "shortlist_compare":
+		args = ["shortlist", "compare"]
+		if arguments.get("tag"):
+			args.extend(["--tag", str(arguments["tag"])])
+		return args
 
 	if name == "shortlist_remove":
 		return ["shortlist", "remove", arguments["security_id"], arguments["job_id"]]

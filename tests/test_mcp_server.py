@@ -1,5 +1,6 @@
 """模型上下文协议服务测试 — 覆盖工具定义、参数构建和调用逻辑。"""
 import inspect
+import re
 import sys
 import types
 from pathlib import Path
@@ -26,6 +27,7 @@ sys.modules.setdefault("mcp.types", _mcp_types)
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "mcp-server"))
 import server  # noqa: E402
 from server import (  # noqa: E402
+	SERVER_INSTRUCTIONS,
 	TOOLS,
 	_build_args,
 	_compliance_command_for_tool,
@@ -38,6 +40,37 @@ from server import (  # noqa: E402
 	run,
 )
 from boss_agent_cli.compliance import low_risk_blocked_commands  # noqa: E402
+from boss_agent_cli.main import cli  # noqa: E402
+
+
+ROOT = Path(__file__).resolve().parents[1]
+
+
+def _read(path: str) -> str:
+	return (ROOT / path).read_text(encoding="utf-8")
+
+
+def _placeholder_value(schema: dict) -> object:
+	if "default" in schema:
+		return schema["default"]
+	if schema.get("enum"):
+		return schema["enum"][0]
+	if schema.get("type") == "integer":
+		return 1
+	if schema.get("type") == "boolean":
+		return False
+	if schema.get("type") == "array":
+		item_schema = schema.get("items") or {}
+		return [_placeholder_value(item_schema)]
+	return "placeholder"
+
+
+def _required_arguments(tool) -> dict[str, object]:
+	properties = tool.inputSchema.get("properties", {})
+	return {
+		name: _placeholder_value(properties.get(name, {}))
+		for name in tool.inputSchema.get("required", [])
+	}
 
 
 # ── 工具定义完整性 ──────────────────────────────────────────────────
@@ -101,8 +134,10 @@ def test_required_tools_present():
 		"boss_ai_interview_prep", "boss_ai_chat_coach",
 		"boss_resume_list", "boss_resume_show",
 		"boss_ai_analyze_jd", "boss_ai_optimize", "boss_ai_suggest",
+		"boss_ai_fit",
 		"boss_watch_list",
 		"boss_preset_list", "boss_shortlist_list",
+		"boss_shortlist_annotate", "boss_shortlist_compare",
 		"boss_hr_jobs",
 		"boss_hr_jobs_detail",
 	}
@@ -112,7 +147,28 @@ def test_required_tools_present():
 
 def test_tool_count():
 	"""工具总数应与当前注册一致。"""
-	assert len(TOOLS) == 32
+	assert len(TOOLS) == 35
+
+
+def test_mcp_tool_count_matches_readme():
+	content = _read("README.en.md")
+	match = re.search(r"MCP server with (\d+) tools", content)
+	assert match
+	assert int(match.group(1)) == len(TOOLS)
+
+
+def test_server_instructions_carry_doctrine():
+	assert SERVER_INSTRUCTIONS
+	assert "COMPLIANCE_BLOCKED" in SERVER_INSTRUCTIONS
+	assert "boss schema" in SERVER_INSTRUCTIONS
+
+
+def test_every_tool_maps_to_registered_command():
+	registered_commands = set(cli.commands)
+	for tool in TOOLS:
+		args = _build_args(tool.name, _required_arguments(tool))
+		assert args, tool.name
+		assert args[0] in registered_commands, tool.name
 
 
 def test_search_tool_requires_query():
@@ -208,6 +264,11 @@ def test_build_args_search_with_options():
 	assert "20-40K" in args
 	assert "--page" in args
 	assert "2" in args
+
+
+def test_build_args_search_with_score_sort():
+	args = _build_args("boss_search", {"query": "python", "sort": "score"})
+	assert args == ["search", "python", "--sort", "score"]
 
 
 def test_build_args_search_ignores_empty_options():
@@ -575,6 +636,11 @@ def test_build_args_ai_suggest():
 	assert args == ["ai", "suggest", "my", "--jd", "后端岗位"]
 
 
+def test_build_args_ai_fit():
+	args = _build_args("boss_ai_fit", {"resume": "my", "limit": 3})
+	assert args == ["ai", "fit", "--resume", "my", "--limit", "3"]
+
+
 def test_build_args_watch_list():
 	assert _build_args("boss_watch_list", {}) == ["watch", "list"]
 
@@ -593,12 +659,30 @@ def test_build_args_shortlist_list():
 
 def test_tool_count_after_pr41():
 	"""协议服务工具总数应与当前 MCP 暴露能力完全一致。"""
-	assert len(TOOLS) == 32
+	assert len(TOOLS) == 35
 
 
 def test_build_args_shortlist_add():
-	args = _build_args("boss_shortlist_add", {"security_id": "s1", "job_id": "j1"})
-	assert args == ["shortlist", "add", "s1", "j1"]
+	args = _build_args("boss_shortlist_add", {"security_id": "s1", "job_id": "j1", "tags": "远程,双休", "note": "优先"})
+	assert args == ["shortlist", "add", "s1", "j1", "--tags", "远程,双休", "--note", "优先"]
+
+
+def test_build_args_shortlist_annotate():
+	args = _build_args(
+		"boss_shortlist_annotate",
+		{"security_id": "s1", "job_id": "j1", "add_tags": ["远程", "双休"], "remove_tags": ["外包"], "note": "优先"},
+	)
+	assert args == [
+		"shortlist", "annotate", "s1", "j1",
+		"--add-tag", "远程", "--add-tag", "双休",
+		"--remove-tag", "外包",
+		"--note", "优先",
+	]
+
+
+def test_build_args_shortlist_compare():
+	args = _build_args("boss_shortlist_compare", {"tag": "远程"})
+	assert args == ["shortlist", "compare", "--tag", "远程"]
 
 
 def test_build_args_shortlist_remove():
