@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import atexit
 from html.parser import HTMLParser
+import json
 import random
 import time
 import weakref
@@ -53,6 +54,29 @@ INTERVIEW_DATA_URL = _SPEC.endpoints["interview_data"].url
 _DEFAULT_HEADERS: dict[str, str] = dict(_SPEC.default_headers)
 _REFERER_MAP: dict[str, str] = {ep.url: ep.referer for ep in _SPEC.endpoints.values()}
 
+_ZHILIAN_CITY_CODES: dict[str, str] = {
+	"全国": "489",
+	"北京": "530",
+	"上海": "538",
+	"广州": "763",
+	"深圳": "765",
+	"杭州": "653",
+	"成都": "801",
+	"南京": "635",
+	"武汉": "736",
+	"西安": "854",
+	"苏州": "639",
+	"天津": "531",
+	"重庆": "551",
+	"郑州": "719",
+	"长沙": "749",
+	"合肥": "664",
+	"青岛": "702",
+	"厦门": "682",
+	"济南": "691",
+	"宁波": "654",
+}
+
 
 # atexit safeguard：类比 BossClient 的管理方式
 _OPEN_CLIENTS: weakref.WeakSet["ZhilianClient"] = weakref.WeakSet()
@@ -77,6 +101,123 @@ def _extract_csrf_token(html: str) -> str | None:
 	parser = _CsrfMetaParser()
 	parser.feed(html)
 	return parser.csrf_token
+
+
+def _string_list_from_labels(value: Any, *, key: str = "value") -> list[str]:
+	if not isinstance(value, list):
+		return []
+	result: list[str] = []
+	for item in value:
+		if isinstance(item, str):
+			result.append(item)
+		elif isinstance(item, dict):
+			raw = item.get(key) or item.get("name") or item.get("labelName") or item.get("typeName")
+			if raw:
+				result.append(str(raw))
+	return result
+
+
+def _parse_json_object(value: Any) -> dict[str, Any]:
+	if not isinstance(value, str) or not value:
+		return {}
+	try:
+		parsed = json.loads(value)
+	except json.JSONDecodeError:
+		return {}
+	return parsed if isinstance(parsed, dict) else {}
+
+
+def _zhilian_city_code(value: Any) -> str:
+	if value is None:
+		return ""
+	text = str(value).strip()
+	if not text:
+		return ""
+	if text.isdigit():
+		return text
+	return _ZHILIAN_CITY_CODES.get(text, text)
+
+
+def _normalize_search_item(raw: dict[str, Any]) -> dict[str, Any]:
+	card = _parse_json_object(raw.get("cardCustomJson"))
+	staff = raw.get("staffCard")
+	if not isinstance(staff, dict):
+		staff = {}
+	number = str(raw.get("number") or raw.get("positionNumber") or raw.get("jobId") or "")
+	skills = _string_list_from_labels(raw.get("skillLabel")) or _string_list_from_labels(raw.get("jobSkillTags"), key="name")
+	welfare = _string_list_from_labels(raw.get("welfareLabel")) or _string_list_from_labels(raw.get("searchTagList"))
+	return {
+		**raw,
+		"encryptJobId": number,
+		"securityId": number,
+		"lid": number,
+		"jobName": raw.get("name") or raw.get("positionName") or "",
+		"brandName": raw.get("companyName") or card.get("companyName") or "",
+		"salaryDesc": raw.get("salary60") or raw.get("salaryReal") or card.get("salary60") or "",
+		"cityName": raw.get("workCity") or "",
+		"areaDistrict": raw.get("cityDistrict") or "",
+		"jobExperience": raw.get("workingExp") or "",
+		"jobDegree": raw.get("education") or "",
+		"skills": skills,
+		"welfareList": welfare,
+		"brandIndustry": raw.get("industryName") or "",
+		"brandScaleName": raw.get("companySize") or "",
+		"brandStageName": raw.get("financingStage") or "",
+		"bossName": staff.get("staffName") or "",
+		"bossTitle": staff.get("hrJob") or "",
+		"bossOnline": bool(staff.get("hrOnlineState") or staff.get("hrOnlineIocState")),
+	}
+
+
+def _normalize_detail_payload(raw: dict[str, Any], number: str) -> dict[str, Any]:
+	position = raw.get("detailedPosition")
+	company = raw.get("detailedCompany")
+	if not isinstance(position, dict):
+		position = {}
+	if not isinstance(company, dict):
+		company = {}
+	return {
+		**raw,
+		"jobInfo": {
+			"encryptJobId": position.get("positionNumber") or number,
+			"jobName": position.get("positionName") or "",
+			"salaryDesc": position.get("salary60") or "",
+			"cityName": position.get("positionWorkCity") or "",
+			"experienceName": position.get("positionWorkingExp") or "",
+			"degreeName": position.get("education") or "",
+			"postDescription": position.get("jobDesc") or "",
+			"address": position.get("workAddress") or "",
+			"jobLabels": _string_list_from_labels(position.get("skillLabel")),
+			"securityId": position.get("positionNumber") or number,
+		},
+		"bossInfo": {
+			"name": "",
+			"title": "",
+			"activeTimeDesc": "离线",
+		},
+		"brandComInfo": {
+			"brandName": company.get("companyName") or "",
+			"industryName": company.get("industryNameLevel") or company.get("industryLevel") or "",
+			"scaleName": company.get("companySize") or "",
+			"stageName": company.get("financingStageName") or "",
+		},
+		"jobDetail": position.get("jobDesc") or "",
+		"jobCard": {
+			"encryptJobId": position.get("positionNumber") or number,
+			"jobName": position.get("positionName") or "",
+			"brandName": company.get("companyName") or "",
+			"salaryDesc": position.get("salary60") or "",
+			"cityName": position.get("positionWorkCity") or "",
+			"experienceName": position.get("positionWorkingExp") or "",
+			"degreeName": position.get("education") or "",
+			"postDescription": position.get("jobDesc") or "",
+			"address": position.get("workAddress") or "",
+			"jobLabels": _string_list_from_labels(position.get("skillLabel")),
+			"bossName": "",
+			"bossTitle": "",
+			"activeTimeDesc": "离线",
+		},
+	}
 
 
 def _close_open_clients() -> None:
@@ -127,6 +268,18 @@ class ZhilianClient:
 	def _headers_for(self, url: str) -> dict[str, str]:
 		return referer_header(url, _REFERER_MAP, f"{_SPEC.base_url}/")
 
+	def _auth_query_params(self) -> dict[str, str]:
+		client = self._get_client()
+		params: dict[str, str] = {}
+		at = client.cookies.get("at")
+		rt = client.cookies.get("rt")
+		if at:
+			params["at"] = at
+		if rt:
+			params["rt"] = rt
+		params["_v"] = f"{random.random():.10f}"[1:]
+		return params
+
 	def _fetch_csrf_token(self) -> str:
 		for attempt in range(_MAX_RETRIES + 1):
 			client = self._get_client()
@@ -161,9 +314,10 @@ class ZhilianClient:
 		for attempt in range(_MAX_RETRIES + 1):
 			client = self._get_client()
 			self._throttle.wait()
-			extra_headers = kwargs.pop("headers", {})
+			request_kwargs = dict(kwargs)
+			extra_headers = request_kwargs.pop("headers", {})
 			headers = {**self._headers_for(url), **extra_headers}
-			resp = client.request(method, url, headers=headers, **kwargs)
+			resp = client.request(method, url, headers=headers, **request_kwargs)
 			self._throttle.mark()
 			self._merge_cookies(resp)
 
@@ -256,45 +410,75 @@ class ZhilianClient:
 		)
 
 	def search_jobs(self, query: str, **filters: Any) -> dict[str, Any]:
-		params: dict[str, Any] = {
-			"keyword": query,
-			"pageNum": filters.get("page", 1),
+		payload: dict[str, Any] = {
+			"S_SOU_FULL_INDEX": query,
+			"pageIndex": filters.get("page", 1),
+			"pageSize": filters.get("page_size", 20),
+			"platform": 13,
+			"version": "0.0.0",
+			"eventScenario": "pcSearchedSouSearch",
+			"anonymous": 0,
 		}
 		if raw_params := filters.get("raw_params"):
-			params.update(raw_params)
-		if page_size := filters.get("page_size"):
-			params["pageSize"] = page_size
+			for key, value in raw_params.items():
+				if key.startswith("S_SOU_") or key in {"order", "sortType", "pageSize"}:
+					payload[key] = value
+				elif key == "cityId":
+					payload["S_SOU_WORK_CITY"] = _zhilian_city_code(value)
+				elif key == "keyword":
+					payload["S_SOU_FULL_INDEX"] = value
 		filter_map = {
-			"city": ("cityId", "city_code"),
-			"salary": ("salary", "salary_code"),
-			"experience": ("workExp", "experience_code"),
-			"education": ("education", "education_code"),
-			"degree": ("education", "degree_code"),
-			"scale": ("companySize", "scale_code"),
-			"industry": ("industry", "industry_code"),
-			"stage": ("financingStage", "stage_code"),
-			"job_type": ("jobType", "job_type_code"),
+			"city": ("S_SOU_WORK_CITY", "city_code"),
+			"salary": ("S_SOU_SALARY", "salary_code"),
+			"experience": ("S_SOU_WORK_EXPERIENCE", "experience_code"),
+			"education": ("S_SOU_EDUCATION_LOWESTLEVEL", "education_code"),
+			"degree": ("S_SOU_EDUCATION_LOWESTLEVEL", "degree_code"),
+			"scale": ("S_SOU_COMPANY_SCALE", "scale_code"),
+			"industry": ("S_SOU_JD_INDUSTRY_LEVEL", "industry_code"),
+			"stage": ("S_SOU_COMPANY_TYPE", "stage_code"),
+			"job_type": ("S_SOU_POSITION_TYPE", "job_type_code"),
 		}
 		for source_key, (target_key, code_key) in filter_map.items():
 			value = filters.get(code_key) or filters.get(source_key)
 			if value:
-				params[target_key] = value
-		return self._request("GET", SEARCH_URL, params=params)
+				payload[target_key] = _zhilian_city_code(value) if target_key == "S_SOU_WORK_CITY" else value
+		data = self._request(
+			"POST",
+			SEARCH_URL,
+			params=self._auth_query_params(),
+			json=payload,
+			headers={
+				"Content-Type": "application/json;charset=UTF-8",
+				"Origin": _SPEC.base_url,
+			},
+		)
+		body = data.get("data")
+		if isinstance(body, dict):
+			items = body.get("list")
+			if isinstance(items, list):
+				body["jobList"] = [_normalize_search_item(item) for item in items if isinstance(item, dict)]
+			body["hasMore"] = body.get("isEndPage") == 0
+		return data
 
 	def job_detail(self, job_id: str) -> dict[str, Any]:
-		return self._request("GET", DETAIL_URL_TEMPLATE.format(job_id=job_id))
+		data = self._request("GET", DETAIL_URL_TEMPLATE, params={"number": job_id})
+		body = data.get("data")
+		if isinstance(body, dict):
+			data["data"] = _normalize_detail_payload(body, job_id)
+		return data
 
 	def recommend_jobs(self, page: int = 1) -> dict[str, Any]:
 		return self._request("GET", RECOMMEND_URL, params={"pageNum": page})
 
 	def user_info(self) -> dict[str, Any]:
-		return self._request("GET", USER_INFO_URL)
+		return self._request("GET", USER_INFO_URL, params={**self._auth_query_params(), "detail": "true"})
 
 	def job_card(self, security_id: str, lid: str = "") -> dict[str, Any]:
-		params: dict[str, Any] = {}
-		if lid:
-			params["lid"] = lid
-		return self._request("GET", JOB_CARD_URL_TEMPLATE.format(security_id=security_id), params=params)
+		data = self.job_detail(security_id)
+		body = data.get("data")
+		if isinstance(body, dict) and "jobCard" in body:
+			data["data"] = {"jobCard": body["jobCard"]}
+		return data
 
 	def job_history(self, page: int = 1) -> dict[str, Any]:
 		return self._request("GET", JOB_HISTORY_URL, params={"pageNum": page})

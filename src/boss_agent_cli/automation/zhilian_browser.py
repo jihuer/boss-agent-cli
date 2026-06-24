@@ -229,7 +229,7 @@ class ZhilianBrowserRecruiterSession:
 		path = self._diagnostics_dir / "zhilian-selector-health.png"
 		try:
 			self._page.screenshot(path=str(path), full_page=True)
-		except (RuntimeError, OSError, TypeError):
+		except (PatchrightError, RuntimeError, OSError, TypeError):
 			return ""
 		return str(path)
 
@@ -257,21 +257,21 @@ def _required_groups(
 def _safe_title(page: PageLike) -> str:
 	try:
 		return page.title()
-	except (RuntimeError, TypeError):
+	except (PatchrightError, RuntimeError, TypeError):
 		return ""
 
 
 def _safe_content(page: PageLike) -> str:
 	try:
 		return page.content()
-	except (RuntimeError, TypeError):
+	except (PatchrightError, RuntimeError, TypeError):
 		return ""
 
 
 def _safe_text(locator: LocatorLike) -> str:
 	try:
 		return locator.inner_text(timeout=1000).strip()
-	except (RuntimeError, TypeError):
+	except (PatchrightError, RuntimeError, TypeError):
 		return ""
 
 

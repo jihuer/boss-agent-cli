@@ -5,7 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from boss_agent_cli.automation.models import PlatformAction
-from boss_agent_cli.automation.zhilian_cdp import _find_zhilian_page
+from boss_agent_cli.automation.zhilian_cdp import _find_zhilian_page, _open_zhilian_chat_page
 from boss_agent_cli.automation.zhilian_browser import ZhilianBrowserRecruiterSession
 from boss_agent_cli.automation.zhilian_browser_actions import (
 	execute_browser_action,
@@ -92,6 +92,16 @@ class FakeCdpPage:
 		self.url = url
 
 
+class FailingGotoPage:
+	def goto(self, url: str, wait_until: str = "domcontentloaded", timeout: int = 15000) -> None:
+		raise RuntimeError("navigation timed out")
+
+
+class FailingScreenshotPage(FakePage):
+	def screenshot(self, path: str, full_page: bool = True) -> None:
+		raise RuntimeError("screenshot timed out")
+
+
 def test_zhilian_browser_session_scans_and_reads_conversation(tmp_path: Path) -> None:
 	page = FakePage()
 	session = ZhilianBrowserRecruiterSession(page, diagnostics_dir=tmp_path)
@@ -127,6 +137,25 @@ def test_zhilian_cdp_prefers_chat_page_over_recommend_page() -> None:
 	selected = _find_zhilian_page([recommend, chat])
 
 	assert selected is chat
+
+
+def test_zhilian_cdp_navigation_timeout_is_structured_runtime_error() -> None:
+	try:
+		_open_zhilian_chat_page(FailingGotoPage(), "https://rd6.zhaopin.com/app/im")
+	except RuntimeError as exc:
+		assert "cannot open Zhilian recruiter chat page via CDP" in str(exc)
+	else:
+		raise AssertionError("expected RuntimeError")
+
+
+def test_zhilian_browser_session_ignores_diagnostic_screenshot_failure(tmp_path: Path) -> None:
+	page = FailingScreenshotPage(missing=("[data-zp-automation='conversation-item']",))
+	session = ZhilianBrowserRecruiterSession(page, diagnostics_dir=tmp_path)
+
+	response = session.recruiter_conversations(["unread"], 1)
+
+	assert response["code"] == 500
+	assert response["diagnostic"]["screenshot_path"] == ""
 
 
 def test_zhilian_browser_session_sends_message_after_selector_health(tmp_path: Path) -> None:

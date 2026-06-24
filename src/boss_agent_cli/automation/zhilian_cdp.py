@@ -5,6 +5,8 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
+from patchright._impl._errors import Error as PatchrightError
+
 from boss_agent_cli.auth.browser import _DEFAULT_CDP_URL, probe_cdp
 from boss_agent_cli.automation.zhilian_browser import (
 	PageLike,
@@ -35,12 +37,15 @@ def create_zhilian_browser_session_from_cdp(
 	page = _find_zhilian_page(context.pages)
 	if page is None:
 		page = context.new_page()
-		page.goto(
-			ZhilianRecruiterSelectors().chat_urls[0],
-			wait_until="domcontentloaded",
-			timeout=15000,
-		)
+		_open_zhilian_chat_page(page, ZhilianRecruiterSelectors().chat_urls[0])
 	return ZhilianBrowserRecruiterSession(_as_page_like(page), diagnostics_dir=diagnostics_dir)
+
+
+def _open_zhilian_chat_page(page: Any, url: str) -> None:
+	try:
+		page.goto(url, wait_until="domcontentloaded", timeout=15000)
+	except (PatchrightError, RuntimeError, OSError, TypeError) as exc:
+		raise RuntimeError(f"cannot open Zhilian recruiter chat page via CDP at {url}: {exc}") from exc
 
 
 def _find_zhilian_page(pages: list[Any]) -> Any | None:

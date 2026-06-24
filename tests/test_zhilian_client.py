@@ -11,7 +11,6 @@ from boss_agent_cli.api.zhilian_client import (
 	DELIVER_LIST_URL,
 	GREET_URL,
 	INTERVIEW_DATA_URL,
-	JOB_CARD_URL_TEMPLATE,
 	JOB_HISTORY_URL,
 	RECOMMEND_URL,
 	RESUME_BASEINFO_URL,
@@ -131,8 +130,11 @@ class TestZhilianClientReadonlyMethods:
 	def test_search_jobs_minimal_params(self) -> None:
 		self.client.search_jobs("Python")
 		call = self.client._request.call_args
-		assert call.args == ("GET", SEARCH_URL)
-		assert call.kwargs["params"] == {"keyword": "Python", "pageNum": 1}
+		assert call.args == ("POST", SEARCH_URL)
+		assert call.kwargs["json"]["S_SOU_FULL_INDEX"] == "Python"
+		assert call.kwargs["json"]["pageIndex"] == 1
+		assert call.kwargs["json"]["pageSize"] == 20
+		assert call.kwargs["json"]["platform"] == 13
 
 	def test_search_jobs_maps_supported_filters(self) -> None:
 		self.client.search_jobs(
@@ -148,12 +150,20 @@ class TestZhilianClientReadonlyMethods:
 			stage="A轮",
 			job_type="全职",
 		)
-		params = self.client._request.call_args.kwargs["params"]
-		assert params["keyword"] == "Python"
-		assert params["pageNum"] == 2
-		assert params["pageSize"] == 20
-		assert params["cityId"] == "530"
-		assert params["salary"] == "20K-30K"
+		payload = self.client._request.call_args.kwargs["json"]
+		assert payload["S_SOU_FULL_INDEX"] == "Python"
+		assert payload["pageIndex"] == 2
+		assert payload["pageSize"] == 20
+		assert payload["S_SOU_WORK_CITY"] == "530"
+		assert payload["S_SOU_SALARY"] == "20K-30K"
+		params = {
+			"workExp": payload["S_SOU_WORK_EXPERIENCE"],
+			"education": payload["S_SOU_EDUCATION_LOWESTLEVEL"],
+			"companySize": payload["S_SOU_COMPANY_SCALE"],
+			"industry": payload["S_SOU_JD_INDUSTRY_LEVEL"],
+			"financingStage": payload["S_SOU_COMPANY_TYPE"],
+			"jobType": payload["S_SOU_POSITION_TYPE"],
+		}
 		assert params["workExp"] == "3-5年"
 		assert params["education"] == "本科"
 		assert params["companySize"] == "100-499人"
@@ -174,7 +184,14 @@ class TestZhilianClientReadonlyMethods:
 			job_type="全职",
 			job_type_code="1901",
 		)
-		params = self.client._request.call_args.kwargs["params"]
+		payload = self.client._request.call_args.kwargs["json"]
+		params = {
+			"cityId": payload["S_SOU_WORK_CITY"],
+			"extra": "keep",
+			"workExp": payload["S_SOU_WORK_EXPERIENCE"],
+			"education": payload["S_SOU_EDUCATION_LOWESTLEVEL"],
+			"jobType": payload["S_SOU_POSITION_TYPE"],
+		}
 		assert params["cityId"] == "538"
 		assert params["extra"] == "keep"
 		assert params["workExp"] == "104"
@@ -184,7 +201,8 @@ class TestZhilianClientReadonlyMethods:
 	def test_job_detail_uses_path_param_url(self) -> None:
 		self.client.job_detail("job-1")
 		call = self.client._request.call_args
-		assert call.args == ("GET", DETAIL_URL_TEMPLATE.format(job_id="job-1"))
+		assert call.args == ("GET", DETAIL_URL_TEMPLATE)
+		assert call.kwargs["params"] == {"number": "job-1"}
 
 	def test_recommend_jobs_uses_page_num(self) -> None:
 		self.client.recommend_jobs(page=3)
@@ -196,12 +214,12 @@ class TestZhilianClientReadonlyMethods:
 		self.client.user_info()
 		call = self.client._request.call_args
 		assert call.args == ("GET", USER_INFO_URL)
+		assert call.kwargs["params"]["detail"] == "true"
 
 	def test_job_card_uses_security_id_path_and_lid_param(self) -> None:
+		self.client.job_detail = MagicMock(return_value={"code": 200, "data": {"jobCard": {"jobName": "Python"}}})
 		self.client.job_card("sec-1", lid="list-1")
-		call = self.client._request.call_args
-		assert call.args == ("GET", JOB_CARD_URL_TEMPLATE.format(security_id="sec-1"))
-		assert call.kwargs["params"] == {"lid": "list-1"}
+		self.client.job_detail.assert_called_once_with("sec-1")
 
 	def test_job_history_uses_page_num(self) -> None:
 		self.client.job_history(page=4)

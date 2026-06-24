@@ -36,9 +36,9 @@ def test_zhilian_spec_loads_from_yaml_and_is_cached():
 	assert spec is get_zhilian_spec()
 	assert spec.base_url == "https://www.zhaopin.com"
 	assert spec.response_codes["success"] == 200
-	assert spec.endpoints["search"].url == "https://fe-api.zhaopin.com/api/c/salesman-search/v2"
-	assert spec.endpoints["detail"].url.endswith("/api/c/jobs/{job_id}/info")
-	assert spec.endpoints["user_info"].referer == "https://i.zhaopin.com/"
+	assert spec.endpoints["search"].url == "https://fe-api.zhaopin.com/c/i/search/positions"
+	assert spec.endpoints["detail"].url.endswith("/c/i/jobs/position-detail-new")
+	assert spec.endpoints["user_info"].url == "https://fe-api.zhaopin.com/c/i/user/detail"
 
 
 def test_job_item_from_api():

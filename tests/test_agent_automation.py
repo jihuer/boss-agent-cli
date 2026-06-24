@@ -255,6 +255,8 @@ def test_agent_run_cli_returns_json_envelope(tmp_path: Path) -> None:
 			"zhilian",
 			"--role",
 			"recruiter",
+			"--cdp-url",
+			"http://127.0.0.1:9",
 			"agent",
 			"run",
 			"--dry-run",

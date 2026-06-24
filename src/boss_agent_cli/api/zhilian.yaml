@@ -32,13 +32,13 @@ endpoints:
     path: "/"
     referer: "/"
   search:
-    method: GET
-    url: "https://fe-api.zhaopin.com/api/c/salesman-search/v2"
-    referer: "https://sou.zhaopin.com/"
+    method: POST
+    url: "https://fe-api.zhaopin.com/c/i/search/positions"
+    referer: "https://www.zhaopin.com/sou/"
   detail:
     method: GET
-    url: "https://fe-api.zhaopin.com/api/c/jobs/{job_id}/info"
-    referer: "https://sou.zhaopin.com/"
+    url: "https://fe-api.zhaopin.com/c/i/jobs/position-detail-new"
+    referer: "https://www.zhaopin.com/sou/"
   recommend:
     method: GET
     url: "https://fe-api.zhaopin.com/api/c/recom-position"
@@ -49,8 +49,8 @@ endpoints:
     referer: "https://sou.zhaopin.com/"
   user_info:
     method: GET
-    url: "https://i.zhaopin.com/api/c/account/profile"
-    referer: "https://i.zhaopin.com/"
+    url: "https://fe-api.zhaopin.com/c/i/user/detail"
+    referer: "https://www.zhaopin.com/sou/"
   resume_baseinfo:
     method: GET
     url: "https://i.zhaopin.com/api/cv/main-cv"
