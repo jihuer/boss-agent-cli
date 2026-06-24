@@ -519,12 +519,12 @@ def test_doctor_redacts_sensitive_token_values(tmp_path):
 	assert "secret-zp" not in output
 
 
-def test_doctor_marks_zhilian_recruiter_read_unsupported(tmp_path):
+def test_doctor_marks_zhilian_recruiter_agent_preflight_supported(tmp_path):
 	token = {"cookies": {"zp_token": "tok", "at": "a", "rt": "r"}, "x_zp_client_id": "cid"}
 	code, parsed = _invoke_doctor(tmp_path, platform="zhilian", token=token)
 	recruiter = _find_check(parsed["data"]["checks"], "recruiter_read_health")
-	assert recruiter["status"] == "warn"
-	assert "暂未接入" in recruiter["detail"]
+	assert recruiter["status"] == "ok"
+	assert "browser/CDP" in recruiter["detail"]
 
 
 @patch("boss_agent_cli.commands.doctor.get_recruiter_platform_instance")
@@ -591,7 +591,7 @@ def test_zhilian_doctor_uses_platform_specific_auth_quality(tmp_path):
 	quality = _find_check(parsed["data"]["checks"], "auth_token_quality")
 	assert quality is not None
 	assert quality["status"] == "ok"
-	assert "zp_token/x-zp-client-id" in quality["detail"]
+	assert "at/x-zp-client-id" in quality["detail"]
 
 
 def test_zhilian_doctor_uses_platform_specific_cookie_and_network_messages(tmp_path):

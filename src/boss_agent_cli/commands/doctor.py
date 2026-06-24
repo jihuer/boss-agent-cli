@@ -395,8 +395,8 @@ def _add_live_probe_checks(ctx: click.Context, auth: AuthManager, checks: list[d
 			{
 				"name": "recruiter_live_read",
 				"status": "warn",
-				"detail": "zhilian 招聘者侧暂未接入；跳过招聘者只读探测",
-				"recovery_action": "切换到 boss --platform zhipin --role recruiter doctor",
+				"detail": "zhilian 招聘者侧通过 agent browser/CDP adapter 探测；doctor 不执行会话扫描或写动作",
+				"recovery_action": "运行 boss --platform zhilian --role recruiter agent run --dry-run --limit 1",
 			}
 		)
 		return

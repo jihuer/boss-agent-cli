@@ -4,9 +4,9 @@
 
 ## 项目一句话介绍
 
-**中文**：专为 AI Agent 设计的 BOSS 直聘求职 CLI，35 个顶层命令 + 9 个招聘者子命令 + 35 个默认低风险 MCP 工具，全部输出 JSON，支持 Claude Desktop/Cursor/Windsurf 无缝接入，覆盖求职者与招聘者双端工作流。
+**中文**：专为 AI Agent 设计的 BOSS 直聘求职 CLI，36 个顶层命令 + 9 个招聘者子命令 + 43 个低风险与自动化 MCP 工具，全部输出 JSON，支持 Claude Desktop/Cursor/Windsurf 无缝接入，覆盖求职者与招聘者双端工作流。
 
-**English**: AI-agent-first CLI for BOSS Zhipin. 35 top-level commands + 9 recruiter subcommands + 35 default low-risk MCP tools, JSON envelope output, typed Python SDK (PEP 561), and out-of-the-box integration for Claude Desktop / Cursor / Windsurf.
+**English**: AI-agent-first CLI for BOSS Zhipin. 36 top-level commands + 9 recruiter subcommands + 43 low-risk and automation MCP tools, JSON envelope output, typed Python SDK (PEP 561), and out-of-the-box integration for Claude Desktop / Cursor / Windsurf.
 
 ## 推荐投稿目标
 
@@ -23,7 +23,7 @@
 分类：CLI Tools / Skills
 
 ```markdown
-- [boss-agent-cli](https://github.com/can4hou6joeng4/boss-agent-cli) - Full job hunt automation on BOSS Zhipin. 35 top-level commands plus recruiter workflow subcommands, 4-tier login fallback, AI resume optimization, chat reply drafts, and interview prep generation.
+- [boss-agent-cli](https://github.com/can4hou6joeng4/boss-agent-cli) - Full job hunt automation on BOSS Zhipin. 36 top-level commands plus recruiter workflow subcommands, 4-tier login fallback, AI resume optimization, chat reply drafts, and interview prep generation.
 ```
 
 ### 3. [awesome-agents](https://github.com/kyrolabs/awesome-agents)
@@ -31,7 +31,7 @@
 分类：Specialized Agents
 
 ```markdown
-- [boss-agent-cli](https://github.com/can4hou6joeng4/boss-agent-cli) ![](https://img.shields.io/github/stars/can4hou6joeng4/boss-agent-cli) - Job-hunt CLI purpose-built for AI agents. BOSS Zhipin integration with 35 top-level commands, recruiter workflow subcommands, 35 default low-risk MCP tools, JSON envelope output, and local-first encrypted storage.
+- [boss-agent-cli](https://github.com/can4hou6joeng4/boss-agent-cli) ![](https://img.shields.io/github/stars/can4hou6joeng4/boss-agent-cli) - Job-hunt CLI purpose-built for AI agents. BOSS Zhipin integration with 36 top-level commands, recruiter workflow subcommands, 43 low-risk and automation MCP tools, JSON envelope output, and local-first encrypted storage.
 ```
 
 ### 4. [awesome-python-cli](https://github.com/shinokada/awesome-python-cli)
@@ -81,7 +81,7 @@
 
 ## 一句话钩子（A/B 测试素材）
 
-1. "35 个顶层命令 + 9 个招聘者子命令 + 35 个默认低风险 MCP 工具，让 AI Agent 帮你打招呼、投简历、聊 HR、准备面试"
+1. "36 个顶层命令 + 9 个招聘者子命令 + 43 个低风险与自动化 MCP 工具，让 AI Agent 帮你打招呼、投简历、聊 HR、准备面试"
 2. "第一个 MCP 就绪、类型安全的中国招聘平台 CLI，为 Claude Desktop / Cursor / Windsurf 设计"
 3. "`boss ai interview-prep` — 把 JD 扔进 AI，秒出 10 道模拟面试题"
 4. "你只负责描述期望，AI Agent 负责搜、聊、投、跟进"

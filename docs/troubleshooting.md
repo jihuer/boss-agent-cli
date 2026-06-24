@@ -37,7 +37,7 @@ boss doctor --live-probe
 | `bridge_exec` / `bridge_fetch` / `bridge_navigate` | 扩展基础执行、浏览器 fetch 与导航能力 |
 | `browser_channel` | CDP/Bridge 汇总状态；不得用于规避平台风控 |
 | `candidate_search_health` / `candidate_detail_health` | 求职者只读能力前置条件 |
-| `recruiter_read_health` | 招聘者只读能力前置条件；智联招聘者侧会明确标记暂未接入 |
+| `recruiter_read_health` | 招聘者只读能力前置条件；智联招聘者侧自动化通过 `agent` browser/CDP adapter 进入 |
 | `network` | zhipin.com 可访问 |
 
 ## 常见问题修复
