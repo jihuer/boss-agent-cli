@@ -163,7 +163,7 @@ All state lives under `~/.boss-agent/` — encrypted tokens, cached searches, sh
 
 ## 🤝 Contributing
 
-See [CONTRIBUTING.en.md](CONTRIBUTING.en.md) and [Getting Started](docs/getting-started.en.md). TL;DR: fork → `feat/xxx` branch → write tests → `python scripts/quality_baseline.py` (ruff + offline pytest + mypy) → PR.
+See [CONTRIBUTING.en.md](CONTRIBUTING.en.md) and [Getting Started](docs/getting-started.en.md). TL;DR: fork → `feat/xxx` branch → write tests → `python scripts/quality_baseline.py` (on Chinese Windows, set `$env:PYTHONUTF8='1'` first) → PR.
 
 ## ⚠️ Disclaimer
 

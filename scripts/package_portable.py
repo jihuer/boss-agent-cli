@@ -151,6 +151,7 @@ if [[ "${{BOSS_AGENT_INSTALL_BROWSER:-0}}" == "1" ]]; then
 else
   echo "browser kernel skipped. To install it now: BOSS_AGENT_INSTALL_BROWSER=1 ./install.sh"
   echo "manual retry command: uv tool run patchright install chromium"
+  echo "if headless shell is missing: uv tool run patchright install chromium-headless-shell"
 fi
 
 cat <<'MSG'
@@ -207,6 +208,23 @@ Project-local state:
 boss --data-dir ./.boss-agent ai local status
 boss --data-dir ./.boss-agent --platform zhilian --role recruiter agent run --dry-run --limit 1
 ```
+
+## Windows notes
+
+If `uv tool update-shell` times out, temporarily expose global tools in PowerShell:
+
+```powershell
+$env:PATH = "$env:USERPROFILE\\.local\\bin;$env:PATH"
+```
+
+If patchright reports a missing headless shell in the global tool environment:
+
+```powershell
+uv tool run patchright install chromium-headless-shell
+```
+
+Before live platform checks, run `boss login`; `AUTH_REQUIRED` means no login
+session is saved yet, not that the CLI is broken.
 
 ## Local model
 

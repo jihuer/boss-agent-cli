@@ -37,7 +37,7 @@ DEFAULTS: dict[str, Any] = {
 def load_config(config_path: Path | None) -> dict[str, Any]:
 	cfg = dict(DEFAULTS)
 	if config_path and config_path.exists():
-		with open(config_path) as f:
+		with open(config_path, encoding="utf-8") as f:
 			user_cfg = json.load(f)
 		cfg.update(user_cfg)
 	return cfg
