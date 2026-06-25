@@ -64,7 +64,7 @@ Every command outputs structured JSON (`ok` for success, `exit 0/1`). Full walk-
 | Platform | Candidate | Recruiter | Status |
 |----------|:--:|:--:|--------|
 | BOSS Zhipin (`zhipin`) | ✅ | ✅ | default |
-| Zhaopin (`zhilian`) | 🟡 candidate-side login + read/write wired | 🟡 `agent` browser/CDP automation V1 | `hr` remains BOSS-only; Zhaopin recruiter automation uses `boss --platform zhilian --role recruiter agent ...` |
+| Zhaopin (`zhilian`) | ✅ candidate-side read-only + local-assist parity | 🟡 `agent` browser/CDP automation V1 | `hr` remains BOSS-only; Zhaopin recruiter automation uses `boss --platform zhilian --role recruiter agent ...` |
 | 51job (`qiancheng`) | 🚧 registered placeholder | — | returns `NOT_SUPPORTED` until the read-only research gate is satisfied |
 
 ```bash
